@@ -104,43 +104,52 @@ def main():
 
     for c, controller in enumerate(controllers):
         controller_state = controller.get('Response Data').get('Status').get('Controller Status')
-        if controller_state != 'Optimal':
-            exit_code = 2
         log.debug('C%s: %s (%s)' % (c, controller.get('Response Data').get('Basics').get('Model'), controller_state))
+        if controller_state not in ['Optimal','OK']:
+            exit_code = 2
         msg.append('C%s: %s' % (c, controller_state))
 
         pds = controller.get('Response Data').get('PD LIST')
-        log.debug('C%s Physical Drives: %s' % (c, len(pds)))
+        if type(pds) == type(None):
+           log.debug('C%s Physical Drives: NONE' % c)
+        else: 
+           log.debug('C%s Physical Drives: %s' % (c, len(pds)))
 
-        for p, pd in enumerate(pds):
-            pd_state = pd.get('State')
-            if pd_state == 'Rbld' and exit_code < 1:
-                exit_code = 1
-            elif pd_state not in ['Onln', 'UGood']:
-                exit_code = 2
-            log.debug('C%s PD%s: %s %s (%s)' % (c, p, pd.get('Model'), pd.get('Size'), pd_state))
-            msg.append('PD%s: %s' % (p, pd_state))
+           for p, pd in enumerate(pds):
+               pd_state = pd.get('State')
+               if pd_state == 'Rbld' and exit_code < 1:
+                   exit_code = 1
+               elif pd_state not in ['Onln', 'UGood', 'GHS']:
+                   exit_code = 2
+               log.debug('C%s PD%s: %s %s (%s)' % (c, p, pd.get('Model'), pd.get('Size'), pd_state))
+               msg.append('PD%s: %s' % (p, pd_state))
 
         vds = controller.get('Response Data').get('VD LIST')
-        log.debug('C%s Virtual Drives: %s' % (c, len(vds)))
+        if type(vds) == type(None):
+           log.debug('C%s Virtual Drives: NONE' % c)
+        else:
+           log.debug('C%s Virtual Drives: %s' % (c, len(vds)))
 
-        for v, vd in enumerate(vds):
-            vd_state = vd.get('State')
-            vd_consist = vd.get('Consist')
-            if vd_state != 'Optl' and exit_code < 1:
-                exit_code = 2
-            if vd_consist == 'No' and exit_code < 1:
-                exit_code = 1
-            log.debug('C%s VD%s: %s (%s)' % (c, v, vd.get('TYPE'), vd_state))
-            msg.append('VD%s: %s%s' % (v, vd_state, ' (Inconsistent)' if vd_consist == 'No' else ''))
+           for v, vd in enumerate(vds):
+               vd_state = vd.get('State')
+               vd_consist = vd.get('Consist')
+               if vd_state != 'Optl' and exit_code < 1:
+                   exit_code = 2
+               if vd_consist == 'No' and exit_code < 1:
+                   exit_code = 1
+               log.debug('C%s VD%s: %s (%s)' % (c, v, vd.get('TYPE'), vd_state))
+               msg.append('VD%s: %s%s' % (v, vd_state, ' (Inconsistent)' if vd_consist == 'No' else ''))
 
-        battery_state = controller.get('Response Data').get('BBU_Info')[0].get('State')
-        if battery_state != 'Optimal':
-            exit_code = 2
-        log.debug('C%s BBU (%s)' % (c, battery_state))
-        msg.append('BBU: %s' % battery_state)
+        if controller.get('Response Data').get('BBU_Info') == None:
+           log.debug('C%s BBU has NONE' % c)
+        else:
+           battery_state = controller.get('Response Data').get('BBU_Info')[0].get('State')
+           if battery_state != 'Optimal':
+               exit_code = 2
+           log.debug('C%s BBU (%s)' % (c, battery_state))
+           msg.append('BBU: %s' % battery_state)
 
-        die(exit_code, ', '.join(msg) if msg else 'No problems detected')
+    die(exit_code, ', '.join(msg) if msg else 'No problems detected')
 
 
 if __name__ == '__main__':
